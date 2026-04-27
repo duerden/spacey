@@ -1,0 +1,19 @@
+{
+  "name": "spacey",
+  "module": "src/entry.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "ENV=development bun ."
+  },
+  "dependencies": {
+    "@babel/core": "^7.29.0",
+    "babel-preset-solid": "^1.9.12",
+    "raylib": "https://github.com/RobLoach/node-raylib",
+    "solid-js": "^1.9.12",
+    "supports-color": "^10.2.2"
+  },
+  "devDependencies": {
+    "cmake-js": "^8.0.0"
+  }
+}

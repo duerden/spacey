@@ -1,7 +1,7 @@
 import * as r from "raylib";
 import { BoxNode } from "./BoxNode";
-import { useMaster } from "../../gui/ctx/Master";
-import {logUI as log} from "../../util/log"
+import { useMaster } from "../../../gui/ctx/Master";
+import {logUI as log} from "../../../util/log"
 
 // draws as asset from AssetLoader
 

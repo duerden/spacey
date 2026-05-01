@@ -2,8 +2,8 @@ import * as r from "raylib";
 import {logRenderer as log} from "../util/log.js"
 import AssetLoader from "./AssetLoader.js"
 import { createSignal } from "solid-js"
-import SolidUI from "../cursed-ui/SolidUI.js"
-import { createComponent } from "../cursed-ui/reconciler.js"
+import SolidUI from "../lib/cursed-ui/SolidUI.js"
+import { createComponent } from "../lib/cursed-ui/reconciler.js"
 import Root from "../gui/Root.jsx"
 
 class GameHost {
@@ -43,7 +43,7 @@ class GameHost {
         this._setUiState = setUiState
 
         // server handles ticking and sim and general state off threaed
-        this.server = new Worker("./src/simulation/Server.js")
+        this.server = new Worker("./src/thread-server/Server.js")
         this.server.addEventListener("message", (event) => {
             this.state = event.data
             this._setUiState(event.data) //update UI

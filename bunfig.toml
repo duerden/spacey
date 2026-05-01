@@ -1,1 +1,1 @@
-preload = ["./src/cursed-ui/preload.js"]
+preload = ["./src/lib/cursed-ui/preload.js"]

@@ -1,4 +1,4 @@
-import GameHost from "./master/GameHost"
+import GameHost from "./thread-master/GameHost"
 
 var game = new GameHost();
 

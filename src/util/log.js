@@ -26,6 +26,8 @@ const COLOURS = {
 
 function baselog(colour, prefix, ...args) {
   if(process.env.ENV != "development") {return}
+
+  prefix = prefix.padEnd(8)
   
   if(supportsColor.stdout){
     return console.log(`\u001B[${colour[0]}m${prefix}\u001B[${colour[1]}m`, ...args)
@@ -36,19 +38,19 @@ function baselog(colour, prefix, ...args) {
 }
 
 function logRenderer(...args){
-  return baselog(COLOURS.cyan, "[R]", ...args)
+  return baselog(COLOURS.cyan, "[Render]", ...args)
 }
 
 function logServer(...args){
-  return baselog(COLOURS.blueBright, "[S]", ...args)
+  return baselog(COLOURS.blueBright, "[Server]", ...args)
 }
 
 function logAssets(...args){
-  return baselog(COLOURS.green, "[A]", ...args)
+  return baselog(COLOURS.green, "[Assets]", ...args)
 }
 
 function logUI(...args){
-  return baselog(COLOURS.yellow, "[U]", ...args)
+  return baselog(COLOURS.yellow, "[cUI]", ...args)
 }
 
 export {

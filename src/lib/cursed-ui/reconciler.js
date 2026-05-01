@@ -1,10 +1,10 @@
 import { createRenderer } from "./universal.js"
 import { NODE_TYPES } from "./nodes.js"
-import { UINode, RootNode } from "./nodes/UINode.js"
+import { PointNode, RootNode } from "./nodes/PointNode.js"
 import { RawTextNode } from "./nodes/TextNode.js"
 
 // Slot node -- used by Solid as a marker/placeholder in the tree
-class SlotNode extends UINode {
+class SlotNode extends PointNode {
     constructor() {
         super("slot")
     }
@@ -28,9 +28,9 @@ export const {
     createElement(tag) {
         const NodeClass = NODE_TYPES[tag]
         if (!NodeClass) {
-            // unknown tag -- just make a generic UINode so we don't crash
-            console.warn(`[ui] unknown element <${tag}>, using generic UINode`)
-            return new UINode(tag)
+            // unknown tag -- just make a generic PointNode so we don't crash
+            console.warn(`[ui] unknown element <${tag}>, using generic PointNode`)
+            return new PointNode(tag)
         }
         return new NodeClass()
     },

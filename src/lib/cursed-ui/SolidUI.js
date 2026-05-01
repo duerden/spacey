@@ -1,4 +1,4 @@
-import { RootNode } from "./nodes/UINode.js"
+import { RootNode } from "./nodes/PointNode.js"
 import { ButtonNode } from "./nodes/ButtonNode.js"
 import { render } from "./reconciler.js"
 

@@ -1,5 +1,5 @@
 import * as r from "raylib";
-import {Switch, Match} from "solid-js"
+import {Switch, Match, createSignal} from "solid-js"
 import {logUI as log} from "../util/log"
 import { MainMenu } from "./MainMenu";
 import { Game } from "./Game";
@@ -27,24 +27,24 @@ function Providers(props){
 const UIDEV = false;
 
 function Root(props) {
+    var [getUIDEV, setUIDEV] = createSignal(false);
+
     return (
         <Providers {...props}>
-            <Switch>
-                <Match when={!UIDEV}>
-                    <Switch fallback={<WTF />}>
-                        <Match when={props.state()?.screen == "main_menu"}>
-                            <MainMenu />
-                        </Match>
-                        <Match when={props.state()?.screen == "lobby"}>
-                            <Game />
-                        </Match>
-                        <Match when={props.state()?.screen == "game"}>
-                            <Game />
-                        </Match>
-                    </Switch>
-                </Match>
-                <Match when={UIDEV}>
+            <Switch fallback={<WTF />}>
+                <Match when={getUIDEV()}>
                     <UIDevTestComponent />
+                </Match>
+
+
+                <Match when={props.state()?.screen == "main_menu"}>
+                    <MainMenu setUIDEV={setUIDEV}/>
+                </Match>
+                <Match when={props.state()?.screen == "lobby"}>
+                    <Game />
+                </Match>
+                <Match when={props.state()?.screen == "game"}>
+                    <Game />
                 </Match>
             </Switch>
         </Providers>

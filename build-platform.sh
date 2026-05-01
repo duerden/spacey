@@ -53,3 +53,5 @@ if [ "$1" == "run" ] ; then
         cd $PLATFORM_DIR && ./game
     fi
 fi
+
+echo "Missing react/jsx-dev-runtime is due to bun CLI not utilising bunfig.toml and having no way to specify plugins."

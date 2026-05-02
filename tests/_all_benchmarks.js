@@ -1,0 +1,1 @@
+import "./channel-worker.bench.js"

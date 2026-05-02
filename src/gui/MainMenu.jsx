@@ -21,14 +21,13 @@ function MenuButton(props){
 
 export function MainMenu(props) {
     const {window, state, server} = useMaster()
-    console.log(props)
     return (
         <box x={0} y={0} w={window.width} h={window.height}>
             <text x={40} y={40} fontSize={40} color={r.WHITE}>
                 GenericName
             </text>
 
-            <MenuButton y={120} action={() => { server.postMessage({ type: "move_state", newState: "game" }) }}>
+            <MenuButton y={120} action={() => { server.callMethod("moveState", "game") }}>
                 Start Game
             </MenuButton>
 

@@ -1,26 +1,19 @@
 //declare var self: Worker;
 import {logServer as log} from "../util/log"
+import { ChannelWorkerClient } from "../lib/channel-worker/ChannelWorker";
 
 const HZ = 128; //tps
 
-class Server {
+class Server extends ChannelWorkerClient {
     constructor(){
+        super(self)
         log("Hello i am a server meep moop")
-        self.addEventListener("message", (event) => {
-            log("msg in", event.data)
-            switch(event.data.type){
-                case "move_state":
-                    this.moveState(event.data.newState)
-                    break;
-                default:
-                    break;
-            }
-        });
 
         this.state = {
             tick: 0,
             screen: "main_menu"
         }
+
         this.syncState()
         this.startTicking()
     }
@@ -49,7 +42,7 @@ class Server {
     }
 
     syncState(){
-        self.postMessage(this.state)
+        this.postMessage("channel_ui_state", this.state)
     }
 
     tick(){

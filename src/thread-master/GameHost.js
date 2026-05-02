@@ -5,6 +5,7 @@ import { createSignal } from "solid-js"
 import SolidUI from "../lib/cursed-ui/SolidUI.js"
 import { createComponent } from "../lib/cursed-ui/reconciler.js"
 import Root from "../gui/Root.jsx"
+import { ChannelWorkerHost } from "../lib/channel-worker/ChannelWorker.js";
 
 class GameHost {
     constructor(
@@ -43,11 +44,12 @@ class GameHost {
         this._setUiState = setUiState
 
         // server handles ticking and sim and general state off threaed
-        this.server = new Worker("./src/thread-server/Server.js")
-        this.server.addEventListener("message", (event) => {
+        this.server = new ChannelWorkerHost("./src/thread-server/Server.js")
+        this.server.addEventListener("channel_ui_state", (event) => {
             this.state = event.data
             this._setUiState(event.data) //update UI
         });
+
         this.server.addEventListener("error", (error)=>{
             console.error("server error!")
             throw error

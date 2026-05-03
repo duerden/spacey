@@ -107,6 +107,7 @@ class Server extends ChannelWorkerClient {
         this.world.step(mspt)
 
         this.state.world = this.serialiseWorld()
+        this.state.playerEntity = this.ref_player
         this.syncState()
     }
 

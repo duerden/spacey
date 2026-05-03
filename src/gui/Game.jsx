@@ -32,6 +32,9 @@ export function Game(props) {
                     <text x={10} y={10}> -- go back</text>
                 </button>
             </box>
+            <box>
+                <text x={2} visible={state().playerEntity.inertia_damp} y={window.height - 20} color={r.RED}>[Damping Movement]</text>
+            </box>
             <box x={0} y={0} w={window.width} h={window.height}>
                 {/* shift center of screen to 0,0 */}
                 <point x={Math.floor(window.width/2)} y={Math.floor(window.height/2)}>

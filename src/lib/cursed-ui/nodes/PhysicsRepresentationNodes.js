@@ -10,15 +10,19 @@ export class PhysPointEntityNode extends PointNode {
         super(tag)
 
         this.tex = /* r.Texture*/ useMaster().assets.get("/img/phys_rn/point_entity.png")
-        this.iox = -Math.floor(this.tex.width / 2)
-        this.ioy = -Math.floor(this.tex.height / 2)
     }
 
     // draws TEXTURES
     drawSelf() {
         const pos = this.absPos()
+        const w = this.tex.width * pos.scale
+        const h = this.tex.height * pos.scale
 
-        r.DrawTexture(this.tex, pos.x + this.iox, pos.y + this.ioy, r.WHITE)
+        const src = { x: 0, y: 0, width: this.tex.width, height: this.tex.height }
+        const dest = { x: pos.x, y: pos.y, width: w, height: h }
+        const origin = { x: Math.floor(w / 2), y: Math.floor(h / 2) }
+
+        r.DrawTexturePro(this.tex, src, dest, origin, 0, r.WHITE)
     }
 }
 
@@ -35,10 +39,10 @@ export class PhysThingEntityNode extends PointNode {
     // draws TEXTURES (rotated via DrawTexturePro)
     drawSelf() {
         const pos = this.absPos()
-        const w = this.tex.width
-        const h = this.tex.height
+        const w = this.tex.width * pos.scale
+        const h = this.tex.height * pos.scale
 
-        const src = { x: 0, y: 0, width: w, height: h }
+        const src = { x: 0, y: 0, width: this.tex.width, height: this.tex.height }
         const dest = { x: pos.x, y: pos.y, width: w, height: h }
         const origin = { x: Math.floor(w / 2), y: Math.floor(h / 2) }
         const deg = this.r * (180 / Math.PI)

@@ -14,6 +14,7 @@ export class PointNode {
         // layout
         this.x = 0
         this.y = 0
+        this.scale = 1
 
         // visibility
         this.visible = true
@@ -36,16 +37,19 @@ export class PointNode {
         }
     }
 
-    // resolve absolute position by walking up the tree
+    // resolve absolute position and accumulated scale by walking up the tree
     absPos() {
         let x = this.x, y = this.y
+        let s = this.scale
         let node = this.parent
         while (node) {
-            x += node.x
-            y += node.y
+            // parent's scale affects our offset from parent
+            x = node.x + x * node.scale
+            y = node.y + y * node.scale
+            s *= node.scale
             node = node.parent
         }
-        return { x, y }
+        return { x, y, scale: s }
     }
 
     // override in subclasses to draw yourself

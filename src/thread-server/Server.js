@@ -2,9 +2,10 @@
 import {logServer as log} from "../util/log"
 import { ChannelWorkerClient } from "../lib/channel-worker/ChannelWorker";
 
-import {World, PointEntity} from "./Physics"
+import {World, PointEntity, DynamicShipEntity, ForceFieldEntity, LAYERS} from "./Physics"
+import {Vector2} from "./Vector2"
 
-const HZ = 128; //tps
+export const HZ = 128; //tps
 
 class Server extends ChannelWorkerClient {
     constructor(){
@@ -29,6 +30,27 @@ class Server extends ChannelWorkerClient {
         ])
 
         this.world = new World(1000 / HZ)
+
+        // Simple symmetric ship: forward, reverse, left turn, right turn thrusters
+        const playerShip = new DynamicShipEntity({
+            name: "player",
+            layer: LAYERS.SHIPS,
+            maxSpeed: 0.4,
+            maxDr: 0.5 * (Math.PI / 180),
+            dampLinear: 0.01,
+            dampAngular: 0.003,
+            thrusters: [
+                { name: "fwd",  offset: new Vector2(0, 0), angle: 0,          maxThrust: 0.01 },
+                { name: "rvs",  offset: new Vector2(0, 0), angle: Math.PI,    maxThrust: 0.01 },
+                { name: "rotL", offset: new Vector2(-1, 0), angle: 0,         maxThrust: 0.001 },
+                { name: "rotR", offset: new Vector2(1, 0),  angle: 0,         maxThrust: 0.001 },
+            ]
+        })
+
+        this.world.addEntity(
+            new PointEntity({name: "zerozero"}),
+            playerShip
+        )
 
         this.ref_player = this.world.getEntityByName("player")
         this.startTicking()
@@ -114,7 +136,15 @@ class Server extends ChannelWorkerClient {
     serialiseWorld(){
         return {
             active: this.world.active,
-            entities: this.world.active ? this.world.entities : []
+            entities: this.world.active ? this.world.entities.map(e => ({
+                x: e.pos.x,
+                y: e.pos.y,
+                r: e.r || 0,
+                scale: e.scale ?? 1,
+                name: e.name,
+                type: e.type,
+                id: e.id,
+            })) : []
         }
     }
 
@@ -123,22 +153,21 @@ class Server extends ChannelWorkerClient {
     //
 
     processPlayerInput(direction, active){
-        //console.log(this.ref_player)
         switch(direction){
             case "player_forwards":
-                this.ref_player.thr_fwd = active
+                this.ref_player.setThruster("fwd", active)
             break;
             case "player_backwards":
-                this.ref_player.thr_rvs = active
+                this.ref_player.setThruster("rvs", active)
             break;
             case "player_left":
-                this.ref_player.thr_l = active
+                this.ref_player.setThruster("rotL", active)
             break;
             case "player_right":
-                this.ref_player.thr_r = active
+                this.ref_player.setThruster("rotR", active)
             break;
             case "player_stop":
-                this.ref_player.thr_inertia_damp = active
+                this.ref_player.setInertiaDamp(active)
         }
     }
 

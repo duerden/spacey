@@ -9,7 +9,9 @@ function SmartEntityNode(props){
             return <phys_point_entity {...props} />
         break;
         case "ThingEntity":
-        case "ShipEntity":
+        case "ForcesEntity":
+        case "ForceFieldEntity":
+        case "DynamicShipEntity":
             return <phys_thing_entity {...props} />
         break;
         default:
@@ -33,7 +35,7 @@ export function Game(props) {
                 </button>
             </box>
             <box>
-                <text x={2} visible={state().playerEntity.inertia_damp} y={window.height - 20} color={r.RED}>[Damping Movement]</text>
+                <text x={2} visible={state().playerEntity.inertiaDamp} y={window.height - 20} color={r.RED}>[Damping Movement]</text>
             </box>
             <box x={0} y={0} w={window.width} h={window.height}>
                 {/* shift center of screen to 0,0 */}

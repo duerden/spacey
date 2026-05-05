@@ -1,11 +1,54 @@
 import * as r from "raylib";
 import {logAssets as log}  from "../util/log"
-import {lstatSync, readdirSync} from "node:fs"
+import {lstatSync, readdirSync, existsSync} from "node:fs"
 import {join} from "node:path"
 
 const syncWait = ms => {
     const end = Date.now() + ms
     while (Date.now() < end) continue
+}
+
+// A bundle of related textures for a single visual entity.
+// diffuse: RGBA colour texture
+// normal:  RGB normal map (default: flat 0x8080FF)
+// specular: RGBA (R=smoothness, G=specular intensity, B=emissive, A=unused)
+// dynamic: RGBA zero-filled, same size as diffuse, for runtime effects (damage, heat, etc)
+export class TextureBundle {
+    constructor(diffuse, normal, specular, dynamic) {
+        this.diffuse = diffuse
+        this.normal = normal
+        this.specular = specular
+        this.dynamic = dynamic
+    }
+}
+
+// Generate fallback textures (1x1, created once and shared)
+let _fallbackNormal = null
+let _fallbackSpecular = null
+
+function getFallbackNormal() {
+    if (!_fallbackNormal) {
+        const img = r.GenImageColor(1, 1, { r: 128, g: 128, b: 255, a: 255 })
+        _fallbackNormal = r.LoadTextureFromImage(img)
+        r.UnloadImage(img)
+    }
+    return _fallbackNormal
+}
+
+function getFallbackSpecular() {
+    if (!_fallbackSpecular) {
+        const img = r.GenImageColor(1, 1, { r: 0, g: 0, b: 0, a: 0 })
+        _fallbackSpecular = r.LoadTextureFromImage(img)
+        r.UnloadImage(img)
+    }
+    return _fallbackSpecular
+}
+
+function createDynamicTexture(width, height) {
+    const img = r.GenImageColor(width, height, { r: 0, g: 0, b: 0, a: 0 })
+    const tex = r.LoadTextureFromImage(img)
+    r.UnloadImage(img)
+    return tex
 }
 
 // provides support for fallbacks, meaning get() should ALWAYS return a valid asset, even if its not the intended asset
@@ -20,6 +63,12 @@ class AssetDirectoryMap extends Map {
 
     get(key) {
         return super.get(key) || this.getFallback(key)
+    }
+
+    // Get a texture bundle by base path (e.g. "/img/ship").
+    // Returns TextureBundle with diffuse/normal/specular/dynamic.
+    getBundle(key) {
+        return super.get(`${key}.__bundle`) || this.getFallback(key)
     }
 
     getFallback(key) {
@@ -113,8 +162,58 @@ class AssetLoader {
             }
         }
 
+        // Build texture bundles for all loaded images.
+        // For each base texture (not ending in _n or _s), create a bundle
+        // that references its companion normal/specular maps or fallbacks.
+        this._buildTextureBundles()
+
         r.SetTraceLogLevel(r.LOG_INFO)
         return this.assets;
+    }
+
+    _buildTextureBundles() {
+        const suffix_n = "_n.png"
+        const suffix_s = "_s.png"
+
+        // Collect base texture paths (anything that isn't a _n or _s companion)
+        const basePaths = []
+        for (let [key] of this.assets) {
+            if (typeof key !== "string") continue
+            if (key.endsWith(suffix_n) || key.endsWith(suffix_s)) continue
+            if (!key.endsWith(".png")) continue
+            basePaths.push(key)
+        }
+
+        for (let path of basePaths) {
+            const stem = path.replace(/\.png$/, "")
+            const normalPath = `${stem}${suffix_n}`
+            const specPath = `${stem}${suffix_s}`
+
+            const diffuse = this.assets.get(path)
+
+            // Use companion textures if they were loaded, otherwise fallback
+            const normal = this.assets.has(normalPath)
+                ? this.assets.get(normalPath)
+                : getFallbackNormal()
+
+            const specular = this.assets.has(specPath)
+                ? this.assets.get(specPath)
+                : getFallbackSpecular()
+
+            // Dynamic texture: same size as diffuse, zero-filled, for runtime effects
+            const dynamic = createDynamicTexture(diffuse.width, diffuse.height)
+
+            const bundle = new TextureBundle(diffuse, normal, specular, dynamic)
+
+            // Store under "/img/ship.__bundle" so getBundle("/img/ship") works
+            this.assets.set(`${stem}.__bundle`, bundle)
+
+            log("bundle", stem, "->",
+                "n:", this.assets.has(normalPath) ? "loaded" : "fallback",
+                "s:", this.assets.has(specPath) ? "loaded" : "fallback",
+                "dyn:", `${diffuse.width}x${diffuse.height}`
+            )
+        }
     }
 
     onAssetLoad(fn){

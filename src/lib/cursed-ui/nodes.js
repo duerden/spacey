@@ -4,6 +4,8 @@ import { ButtonNode } from "./nodes/ButtonNode"
 import { FramebufferNode } from "./nodes/FramebufferNode"
 import { PointNode } from "./nodes/PointNode"
 import { AssetNode } from "./nodes/AssetNode"
+import { LitSceneNode } from "./nodes/LitSceneNode"
+import { ShadedSpriteNode } from "./nodes/ShadedSpriteNode"
 import {
     PhysPointEntityNode,
     PhysThingEntityNode
@@ -21,6 +23,10 @@ export const NODE_TYPES = {
     styledbox: StyledBoxNode,
     framebuffer: FramebufferNode,
     asset: AssetNode,
+
+    //lighting
+    lit_scene: LitSceneNode,
+    shaded_sprite: ShadedSpriteNode,
 
     //phys
     phys_point_entity: PhysPointEntityNode,

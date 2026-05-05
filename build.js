@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { installSolidPlugin } from "./src/lib/cursed-ui/plugin.js"
+import { solidPlugin } from "./src/lib/cursed-ui/plugin.js"
 
 // ============================================================
 // Config
@@ -60,14 +60,11 @@ if (!existsSync(raylibNode)) {
 
 console.log(`\nBuilding for ${PLATFORM}...`)
 
-// Install the solid JSX transform plugin — this is what bunfig.toml's
-// preload does at runtime, but bun build --compile doesn't read bunfig.
-installSolidPlugin()
-
 const result = await Bun.build({
     entrypoints: ["src/entry.js"],
     outdir: PLATFORM_DIR,
     target: BUN_TARGET,
+    plugins: [solidPlugin],
     minify: true,
     sourcemap: "linked",
     bytecode: true,
@@ -89,7 +86,21 @@ console.log(`Bundle written to ${PLATFORM_DIR}/`)
 
 const outfile = `${PLATFORM_DIR}/game${isWindows ? ".exe" : ""}`
 
-await exec(`bun build --compile ${PLATFORM_DIR}/entry.js --target=${BUN_TARGET} --outfile ${outfile}`)
+const compileResult = await Bun.build({
+    entrypoints: [`${PLATFORM_DIR}/entry.js`],
+    outfile,
+    target: BUN_TARGET,
+    plugins: [solidPlugin],
+    compile: true,
+})
+
+if (!compileResult.success) {
+    console.error("Compile failed:")
+    for (const log of compileResult.logs) {
+        console.error(log)
+    }
+    process.exit(1)
+}
 
 // ============================================================
 // 4. Copy assets

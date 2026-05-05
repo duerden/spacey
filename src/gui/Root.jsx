@@ -4,6 +4,7 @@ import {logUI as log} from "../util/log"
 import { MainMenu } from "./MainMenu";
 import { Game } from "./Game";
 import { UIDevTestComponent } from "./UIDevTest";
+import { LightingTestComponent } from "./LightingTest";
 
 import { MasterProvider, useMaster } from "./ctx/Master";
 
@@ -28,6 +29,7 @@ const UIDEV = false;
 
 function Root(props) {
     var [getUIDEV, setUIDEV] = createSignal(false);
+    var [getLightTest, setLightTest] = createSignal(false);
 
     return (
         <Providers {...props}>
@@ -35,10 +37,13 @@ function Root(props) {
                 <Match when={getUIDEV()}>
                     <UIDevTestComponent />
                 </Match>
+                <Match when={getLightTest()}>
+                    <LightingTestComponent />
+                </Match>
 
 
                 <Match when={props.state()?.screen == "main_menu"}>
-                    <MainMenu setUIDEV={setUIDEV}/>
+                    <MainMenu setUIDEV={setUIDEV} setLightTest={setLightTest}/>
                 </Match>
                 <Match when={props.state()?.screen == "lobby"}>
                     <Game />

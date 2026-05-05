@@ -34,6 +34,10 @@ export function MainMenu(props) {
             <MenuButton y={180} action={() => { props.setUIDEV(true) }}>
                 GUI Dev Test
             </MenuButton>
+
+            <MenuButton y={240} action={() => { props.setLightTest(true) }}>
+                Lighting Test
+            </MenuButton>
                 
 
             <text x={40} y={680} fontSize={14} color={r.GRAY}>

@@ -153,7 +153,7 @@
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
-    "raylib": ["raylib@github:RobLoach/node-raylib#6764fc3", { "dependencies": { "cross-fetch": "^3.1.5", "module-alias": "^2.2.2" }, "bin": "./bin/node-raylib" }, "RobLoach-node-raylib-6764fc3"],
+    "raylib": ["raylib@github:RobLoach/node-raylib#6764fc3", { "dependencies": { "cross-fetch": "^3.1.5", "module-alias": "^2.2.2" }, "bin": "./bin/node-raylib" }, "RobLoach-node-raylib-6764fc3", "sha512-FasP0HW28ZwWQ8rQBPSDRr1M8aryCT3DNedy0JOAt76N9o604r0jUAzsh6MEJVmC9ZMT9yBLZr12un7zYYibsA=="],
 
     "rc": ["rc@1.2.8", "", { "dependencies": { "deep-extend": "^0.6.0", "ini": "~1.3.0", "minimist": "^1.2.0", "strip-json-comments": "~2.0.1" }, "bin": { "rc": "./cli.js" } }, "sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw=="],
 

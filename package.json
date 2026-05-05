@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "start": "ENV=development bun .",
-    "build": "./build-platform.sh",
+    "build": "bun run build.js",
+    "build:run": "bun run build.js run",
     "test": "bun test && bun run tests/_all_benchmarks.js"
   },
   "dependencies": {

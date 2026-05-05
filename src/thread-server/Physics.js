@@ -326,15 +326,16 @@ export class DynamicShipEntity extends ForcesEntity {
             // Linear dampening
             const speed = this.vel.length()
             if (speed > 0) {
-                const brake = Math.min(this.dampLinear, speed)
-                const brakeVec = this.vel.normalize().scale(-brake)
-                this.vel = this.vel.add(brakeVec.scale(dt))
+                // Don't remove more than the current speed
+                const brake = Math.min(this.dampLinear * dt, speed)
+                this.vel = this.vel.sub(this.vel.normalize().scale(brake))
             }
 
             // Angular dampening
             if (Math.abs(this.dr) > 0) {
-                const brake = Math.min(this.dampAngular, Math.abs(this.dr))
-                this.dr -= Math.sign(this.dr) * brake * dt
+                // Don't remove more than the current angular velocity
+                const brake = Math.min(this.dampAngular * dt, Math.abs(this.dr))
+                this.dr -= Math.sign(this.dr) * brake
             }
         }
 

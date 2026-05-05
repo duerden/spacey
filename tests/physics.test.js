@@ -710,26 +710,42 @@ describe("DynamicShipEntity", () => {
         expect(ship.dr).toBeCloseTo(0)
     })
 
-    test("inertia dampening slows linear velocity", () => {
+    test("inertia dampening slows linear velocity to zero", () => {
         const ship = makeShip([], { dampLinear: 0.5 })
         ship.vel = new Vector2(5, 0) // give it initial velocity
         ship.setInertiaDamp(true)
         const world = makeWorld(ship)
 
-        stepN(world, 20)
+        stepN(world, 100)
 
-        expect(ship.vel.length()).toBeLessThan(1)
+        expect(ship.vel.length()).toBe(0)
     })
 
-    test("inertia dampening slows angular velocity", () => {
+    test("inertia dampening slows angular velocity to zero", () => {
         const ship = makeShip([], { dampAngular: 0.1 })
         ship.dr = 1.0 // give it angular velocity
         ship.setInertiaDamp(true)
         const world = makeWorld(ship)
 
-        stepN(world, 20)
+        stepN(world, 100)
 
-        expect(Math.abs(ship.dr)).toBeLessThan(0.1)
+        expect(ship.dr).toBe(0)
+    })
+
+    test("dampening converges with large dt (no oscillation)", () => {
+        // This is the exact scenario that was bugged: dt >> damping rate
+        const ship = makeShip([], { dampLinear: 0.01, dampAngular: 0.003 })
+        ship.vel = new Vector2(0.4, 0)
+        ship.dr = 0.0087
+        ship.setInertiaDamp(true)
+        const world = makeWorld(ship)
+
+        // Use the actual game dt
+        const dt = 1000 / 128
+        for (let i = 0; i < 2000; i++) world.step(dt)
+
+        expect(ship.vel.length()).toBe(0)
+        expect(ship.dr).toBe(0)
     })
 
     test("asymmetric thruster layout causes drift", () => {

@@ -31,7 +31,7 @@ class Server extends ChannelWorkerClient {
 
         this.world = new World(1000 / HZ)
 
-        // Simple symmetric ship: forward, reverse, left turn, right turn thrusters
+        // Symmetric ship: forward, reverse, paired rotation thrusters
         const playerShip = new DynamicShipEntity({
             name: "player",
             layer: LAYERS.SHIPS,
@@ -40,10 +40,14 @@ class Server extends ChannelWorkerClient {
             dampLinear: 0.01,
             dampAngular: 0.003,
             thrusters: [
-                { name: "fwd",  offset: new Vector2(0, 0), angle: 0,          maxThrust: 0.01 },
-                { name: "rvs",  offset: new Vector2(0, 0), angle: Math.PI,    maxThrust: 0.01 },
-                { name: "rotL", offset: new Vector2(-1, 0), angle: 0,         maxThrust: 0.001 },
-                { name: "rotR", offset: new Vector2(1, 0),  angle: 0,         maxThrust: 0.001 },
+                { name: "fwd",    offset: new Vector2(0, 0),  angle: 0,       maxThrust: 0.01 },
+                { name: "rvs",    offset: new Vector2(0, 0),  angle: Math.PI, maxThrust: 0.01 },
+                // Turn left: right side pushes fwd, left side pushes back — net force cancels, torque adds
+                { name: "rotL_a", offset: new Vector2(1, 0),  angle: 0,       maxThrust: 0.001 },
+                { name: "rotL_b", offset: new Vector2(-1, 0), angle: Math.PI, maxThrust: 0.001 },
+                // Turn right: left side pushes fwd, right side pushes back
+                { name: "rotR_a", offset: new Vector2(-1, 0), angle: 0,       maxThrust: 0.001 },
+                { name: "rotR_b", offset: new Vector2(1, 0),  angle: Math.PI, maxThrust: 0.001 },
             ]
         })
 
@@ -161,10 +165,12 @@ class Server extends ChannelWorkerClient {
                 this.ref_player.setThruster("rvs", active)
             break;
             case "player_left":
-                this.ref_player.setThruster("rotL", active)
+                this.ref_player.setThruster("rotL_a", active)
+                this.ref_player.setThruster("rotL_b", active)
             break;
             case "player_right":
-                this.ref_player.setThruster("rotR", active)
+                this.ref_player.setThruster("rotR_a", active)
+                this.ref_player.setThruster("rotR_b", active)
             break;
             case "player_stop":
                 this.ref_player.setInertiaDamp(active)

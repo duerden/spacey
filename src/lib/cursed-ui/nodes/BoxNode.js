@@ -14,6 +14,24 @@ export class BoxNode extends PointNode {
         this.h = 0
     }
 
+    // Nine-point anchor system. Returns {x, y} offset relative to
+    // this box's origin (top-left) for a named anchor position.
+    // Returns null if the name isn't a valid anchor.
+    resolveAnchor(name) {
+        switch (name) {
+            case "top_left":      return { x: 0,          y: 0 }
+            case "top_centre":    return { x: this.w / 2, y: 0 }
+            case "top_right":     return { x: this.w,     y: 0 }
+            case "centre_left":   return { x: 0,          y: this.h / 2 }
+            case "centre":        return { x: this.w / 2, y: this.h / 2 }
+            case "centre_right":  return { x: this.w,     y: this.h / 2 }
+            case "base_left":     return { x: 0,          y: this.h }
+            case "base_centre":   return { x: this.w / 2, y: this.h }
+            case "base_right":    return { x: this.w,     y: this.h }
+            default:              return null
+        }
+    }
+
     drawSelf() {
         if (!this.bg) return
         const pos = this.absPos()

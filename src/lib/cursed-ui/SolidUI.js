@@ -1,4 +1,4 @@
-import { RootNode } from "./nodes/PointNode.js"
+import { RootNode, PointNode } from "./nodes/PointNode.js"
 import { ButtonNode } from "./nodes/ButtonNode.js"
 import { render } from "./reconciler.js"
 
@@ -18,6 +18,7 @@ export default class SolidUI {
     // Call every frame BEFORE draw, inside BeginDrawing/EndDrawing.
     // Handles input for button nodes, then draws the full tree.
     draw() {
+        PointNode.invalidateAbsPosCache()
         this._processInput(this.root)
         this.root.draw()
     }

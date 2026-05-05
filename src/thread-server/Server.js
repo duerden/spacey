@@ -4,6 +4,7 @@ import { ChannelWorkerClient } from "../lib/channel-worker/ChannelWorker";
 
 import {World, PointEntity, DynamicShipEntity, ForceFieldEntity, LAYERS} from "./Physics"
 import {Vector2} from "./Vector2"
+import {FlightComputer} from "./FlightComputer"
 
 export const HZ = 128; //tps
 
@@ -22,32 +23,30 @@ class Server extends ChannelWorkerClient {
         }
 
         this.actions = new Map([
-            ["player_forwards",  (active) => this.processPlayerInput("player_forwards", active)],
-            ["player_left",      (active) => this.processPlayerInput("player_left", active)],
-            ["player_backwards", (active) => this.processPlayerInput("player_backwards", active)],
-            ["player_right",     (active) => this.processPlayerInput("player_right", active)],
-            ["player_stop",      (active) => this.processPlayerInput("player_stop", active)]
+            ["player_forwards",  (active) => this.processPlayerInput("fwd", active)],
+            ["player_left",      (active) => this.processPlayerInput("left", active)],
+            ["player_backwards", (active) => this.processPlayerInput("back", active)],
+            ["player_right",     (active) => this.processPlayerInput("right", active)],
         ])
 
         this.world = new World(1000 / HZ)
 
-        // Symmetric ship: forward, reverse, paired rotation thrusters
+        // Ship hardware: thrusters are just physical descriptions.
+        // The flight computer decides how to use them.
         const playerShip = new DynamicShipEntity({
             name: "player",
             layer: LAYERS.SHIPS,
             maxSpeed: 0.4,
             maxDr: 0.5 * (Math.PI / 180),
-            dampLinear: 0.01,
-            dampAngular: 0.003,
             thrusters: [
-                { name: "fwd",    offset: new Vector2(0, 0),  angle: 0,       maxThrust: 0.01 },
-                { name: "rvs",    offset: new Vector2(0, 0),  angle: Math.PI, maxThrust: 0.01 },
-                // Turn left: right side pushes fwd, left side pushes back — net force cancels, torque adds
-                { name: "rotL_a", offset: new Vector2(1, 0),  angle: 0,       maxThrust: 0.001 },
-                { name: "rotL_b", offset: new Vector2(-1, 0), angle: Math.PI, maxThrust: 0.001 },
-                // Turn right: left side pushes fwd, right side pushes back
-                { name: "rotR_a", offset: new Vector2(-1, 0), angle: 0,       maxThrust: 0.001 },
-                { name: "rotR_b", offset: new Vector2(1, 0),  angle: Math.PI, maxThrust: 0.001 },
+                // Main engines (center, fore/aft)
+                { name: "main_fwd", offset: new Vector2(0, 0),  angle: 0,       maxThrust: 0.01 },
+                { name: "main_rvs", offset: new Vector2(0, 0),  angle: Math.PI, maxThrust: 0.01 },
+                // Maneuvering thrusters (offset from center, produce torque)
+                { name: "rcs_fr",   offset: new Vector2(1, 0),  angle: 0,       maxThrust: 0.002 },
+                { name: "rcs_fl",   offset: new Vector2(-1, 0), angle: 0,       maxThrust: 0.002 },
+                { name: "rcs_br",   offset: new Vector2(1, 0),  angle: Math.PI, maxThrust: 0.002 },
+                { name: "rcs_bl",   offset: new Vector2(-1, 0), angle: Math.PI, maxThrust: 0.002 },
             ]
         })
 
@@ -57,6 +56,7 @@ class Server extends ChannelWorkerClient {
         )
 
         this.ref_player = this.world.getEntityByName("player")
+        this.flightComputer = new FlightComputer(this.ref_player)
         this.startTicking()
 
         self.addEventListener("channel_keybinds", (e) => this.processBind(e.data))
@@ -128,12 +128,17 @@ class Server extends ChannelWorkerClient {
 
     tick(mspt){
         this.state.tick++;
-        
+
+        // Flight computer resolves intent → throttles before physics steps
+        this.flightComputer.update()
+
         //physics
         this.world.step(mspt)
 
         this.state.world = this.serialiseWorld()
-        this.state.playerEntity = this.ref_player
+        this.state.playerEntity = {
+            flightMode: this.flightComputer.mode,
+        }
         this.syncState()
     }
 
@@ -156,25 +161,8 @@ class Server extends ChannelWorkerClient {
     // physics
     //
 
-    processPlayerInput(direction, active){
-        switch(direction){
-            case "player_forwards":
-                this.ref_player.setThruster("fwd", active)
-            break;
-            case "player_backwards":
-                this.ref_player.setThruster("rvs", active)
-            break;
-            case "player_left":
-                this.ref_player.setThruster("rotL_a", active)
-                this.ref_player.setThruster("rotL_b", active)
-            break;
-            case "player_right":
-                this.ref_player.setThruster("rotR_a", active)
-                this.ref_player.setThruster("rotR_b", active)
-            break;
-            case "player_stop":
-                this.ref_player.setInertiaDamp(active)
-        }
+    processPlayerInput(key, active){
+        this.flightComputer.setKey(key, active)
     }
 
 

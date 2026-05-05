@@ -264,54 +264,40 @@ export class DynamicShipEntity extends ForcesEntity {
         super(i)
 
         // Array of thruster definitions
+        // Each: { name, offset: Vector2, angle: number, maxThrust: number }
         this.thrusters = i.thrusters || []
 
-        // Map of thruster name -> active (boolean)
-        this.thrusterState = new Map()
-        for (let thruster of this.thrusters) {
-            this.thrusterState.set(thruster.name, false)
-        }
+        // Per-thruster throttle (0.0 - 1.0), indexed same as this.thrusters
+        this.throttles = new Float64Array(this.thrusters.length)
 
-        this.inertiaDamp = false
-        this.dampLinear = i.dampLinear || 0.01   // braking acceleration for linear
-        this.dampAngular = i.dampAngular || 0.003 // braking acceleration for angular
+        // Cached net torque from throttles
+        this._thrusterTorque = 0
     }
 
-    setThruster(name, active) {
-        this.thrusterState.set(name, active)
-        this._recomputeThrusters()
-    }
-
-    setInertiaDamp(active) {
-        this.inertiaDamp = active
-    }
-
-    _recomputeThrusters() {
-        // Remove old thruster force
+    // Set all throttles at once (from FlightComputer solver)
+    setThrottles(throttles) {
         this.removeForce("__thrusters_linear")
 
         let netForce = Vector2.zero()
         let netTorque = 0
 
-        for (let thruster of this.thrusters) {
-            if (!this.thrusterState.get(thruster.name)) continue
+        for (let i = 0; i < this.thrusters.length; i++) {
+            const throttle = Math.max(0, Math.min(1, throttles[i] || 0))
+            this.throttles[i] = throttle
+            if (throttle === 0) continue
 
-            // Thrust direction (in ship-local space)
+            const thruster = this.thrusters[i]
             const thrustDir = Vector2.fromAngle(thruster.angle)
-            const force = thrustDir.scale(thruster.maxThrust)
+            const force = thrustDir.scale(thruster.maxThrust * throttle)
 
             netForce = netForce.add(force)
-
-            // Torque = cross(offset, force)
             netTorque += thruster.offset.cross(force)
         }
 
-        // Apply as a relative force (rotates with ship)
         if (netForce.lengthSq() > 0) {
             this.addForce("__thrusters_linear", netForce, true)
         }
 
-        // Store torque for per-frame application in step()
         this._thrusterTorque = netTorque
     }
 
@@ -319,24 +305,6 @@ export class DynamicShipEntity extends ForcesEntity {
         // Apply thruster torque
         if (this._thrusterTorque) {
             this.dr += this._thrusterTorque * dt
-        }
-
-        // Inertia dampening
-        if (this.inertiaDamp) {
-            // Linear dampening
-            const speed = this.vel.length()
-            if (speed > 0) {
-                // Don't remove more than the current speed
-                const brake = Math.min(this.dampLinear * dt, speed)
-                this.vel = this.vel.sub(this.vel.normalize().scale(brake))
-            }
-
-            // Angular dampening
-            if (Math.abs(this.dr) > 0) {
-                // Don't remove more than the current angular velocity
-                const brake = Math.min(this.dampAngular * dt, Math.abs(this.dr))
-                this.dr -= Math.sign(this.dr) * brake
-            }
         }
 
         super.step(dt)

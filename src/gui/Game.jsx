@@ -35,7 +35,7 @@ export function Game(props) {
                 </button>
             </box>
             <box>
-                <text x={2} visible={state().playerEntity.inertiaDamp} y={window.height - 20} color={r.RED}>[Damping Movement]</text>
+                <text x={2} visible={state().playerEntity?.flightMode} y={window.height - 20} color={r.WHITE}>[{state().playerEntity?.flightMode || ""}]</text>
             </box>
             <box x={0} y={0} w={window.width} h={window.height}>
                 {/* shift center of screen to 0,0 */}

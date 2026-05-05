@@ -65,7 +65,6 @@ class GameHost {
             [r.KEY_A,      "constant", "player_left",      ()=>this.state.screen == "game"],
             [r.KEY_S,      "constant", "player_backwards", ()=>this.state.screen == "game"],
             [r.KEY_D,      "constant", "player_right",     ()=>this.state.screen == "game"],
-            [r.KEY_LEFT_SHIFT, "constant", "player_stop",      ()=>this.state.screen == "game"],
         ]//.map(key => ({key: key[0], intent: key[1], action: key[2], conditional:key[3], active:false}))
 
         var binds = new Map(default_binds.map( (key) => (

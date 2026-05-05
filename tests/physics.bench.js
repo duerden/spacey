@@ -146,20 +146,19 @@ function makeDynamicShips(n) {
             y: Math.random() * 1000,
             maxSpeed: 10,
             maxDr: 1,
-            dampLinear: 0.01,
-            dampAngular: 0.003,
             thrusters: [
                 { name: "fwd",  offset: new Vector2(0, 0),   angle: 0,       maxThrust: 0.01 },
                 { name: "rvs",  offset: new Vector2(0, 0),   angle: Math.PI, maxThrust: 0.01 },
-                { name: "rotL", offset: new Vector2(-1, 0),  angle: 0,       maxThrust: 0.001 },
-                { name: "rotR", offset: new Vector2(1, 0),   angle: 0,       maxThrust: 0.001 },
+                { name: "rcs_fr", offset: new Vector2(1, 0),  angle: 0,      maxThrust: 0.002 },
+                { name: "rcs_fl", offset: new Vector2(-1, 0), angle: 0,      maxThrust: 0.002 },
+                { name: "rcs_br", offset: new Vector2(1, 0),  angle: Math.PI, maxThrust: 0.002 },
+                { name: "rcs_bl", offset: new Vector2(-1, 0), angle: Math.PI, maxThrust: 0.002 },
             ]
         })
-        // Randomly activate some thrusters
-        if (Math.random() > 0.5) ship.setThruster("fwd", true)
-        if (Math.random() > 0.7) ship.setThruster("rotL", true)
-        if (Math.random() > 0.7) ship.setThruster("rotR", true)
-        if (Math.random() > 0.8) ship.setInertiaDamp(true)
+        // Randomly set throttles
+        const throttles = new Float64Array(6)
+        for (let j = 0; j < 6; j++) throttles[j] = Math.random() > 0.5 ? Math.random() : 0
+        ship.setThrottles(throttles)
         world.addEntity(ship)
     }
     return world
@@ -208,15 +207,13 @@ function makeMixedScene(ships, fields, debris) {
             layer: LAYERS.SHIPS,
             maxSpeed: 10,
             maxDr: 1,
-            dampLinear: 0.01,
-            dampAngular: 0.003,
             thrusters: [
-                { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 0.01 },
-                { name: "rotL", offset: new Vector2(-1, 0), angle: 0, maxThrust: 0.001 },
-                { name: "rotR", offset: new Vector2(1, 0), angle: 0, maxThrust: 0.001 },
+                { name: "fwd",    offset: new Vector2(0, 0),   angle: 0,       maxThrust: 0.01 },
+                { name: "rcs_fr", offset: new Vector2(1, 0),   angle: 0,       maxThrust: 0.002 },
+                { name: "rcs_fl", offset: new Vector2(-1, 0),  angle: 0,       maxThrust: 0.002 },
             ]
         })
-        if (Math.random() > 0.5) ship.setThruster("fwd", true)
+        if (Math.random() > 0.5) ship.setThrottles([1, 0, 0])
         world.addEntity(ship)
 
         // Give ship a parented shield
@@ -283,7 +280,7 @@ async function main() {
     ])
 
     // --- DynamicShipEntity ---
-    printResults("DynamicShipEntity (thrusters + dampening)", [
+    printResults("DynamicShipEntity (throttle-based thrusters)", [
         bench("10 ships",    () => makeDynamicShips(10)),
         bench("100 ships",   () => makeDynamicShips(100)),
         bench("1,000 ships", () => makeDynamicShips(1000)),

@@ -4,6 +4,7 @@ import {
     World, PointEntity, ThingEntity, ForcesEntity,
     ForceFieldEntity, DynamicShipEntity, LAYERS
 } from "../src/thread-server/Physics.js"
+import { FlightComputer } from "../src/thread-server/FlightComputer.js"
 
 // ============================================================
 // Helpers
@@ -648,18 +649,16 @@ describe("DynamicShipEntity", () => {
         return new DynamicShipEntity({
             maxSpeed: 10,
             maxDr: 1,
-            dampLinear: 0.5,
-            dampAngular: 0.1,
             ...opts,
             thrusters
         })
     }
 
-    test("single forward thruster accelerates in facing direction", () => {
+    test("full throttle on forward thruster accelerates in facing direction", () => {
         const ship = makeShip([
             { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 1 }
         ])
-        ship.setThruster("fwd", true)
+        ship.setThrottles([1.0])
         const world = makeWorld(ship)
 
         stepN(world, 10)
@@ -669,11 +668,28 @@ describe("DynamicShipEntity", () => {
         expect(Math.abs(ship.vel.x)).toBeLessThan(0.001)
     })
 
+    test("half throttle produces half the acceleration", () => {
+        const shipFull = makeShip([
+            { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 1 }
+        ])
+        const shipHalf = makeShip([
+            { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 1 }
+        ])
+        shipFull.setThrottles([1.0])
+        shipHalf.setThrottles([0.5])
+        const world = makeWorld(shipFull, shipHalf)
+
+        stepN(world, 10)
+
+        // Half throttle should have roughly half the velocity
+        expect(Math.abs(shipHalf.vel.y)).toBeCloseTo(Math.abs(shipFull.vel.y) * 0.5, 1)
+    })
+
     test("ship rotated PI/2 thrusts in +x direction", () => {
         const ship = makeShip([
             { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 1 }
         ], { r: Math.PI / 2 })
-        ship.setThruster("fwd", true)
+        ship.setThrottles([1.0])
         const world = makeWorld(ship)
 
         stepN(world, 10)
@@ -683,16 +699,15 @@ describe("DynamicShipEntity", () => {
     })
 
     test("offset thruster produces torque", () => {
-        // Thruster on the right side pushing forward → should rotate counterclockwise (negative dr)
         const ship = makeShip([
             { name: "rotL", offset: new Vector2(1, 0), angle: 0, maxThrust: 1 }
         ])
-        ship.setThruster("rotL", true)
+        ship.setThrottles([1.0])
         const world = makeWorld(ship)
 
         stepN(world, 5)
 
-        // cross((1,0), fromAngle(0)) = cross((1,0), (0,-1)) = 1*(-1) - 0*0 = -1
+        // cross((1,0), fromAngle(0)) = cross((1,0), (0,-1)) = -1
         expect(ship.dr).toBeLessThan(0)
     })
 
@@ -701,8 +716,7 @@ describe("DynamicShipEntity", () => {
             { name: "left",  offset: new Vector2(-1, 0), angle: 0, maxThrust: 1 },
             { name: "right", offset: new Vector2(1, 0),  angle: 0, maxThrust: 1 }
         ])
-        ship.setThruster("left", true)
-        ship.setThruster("right", true)
+        ship.setThrottles([1.0, 1.0])
         const world = makeWorld(ship)
 
         stepN(world, 10)
@@ -710,73 +724,43 @@ describe("DynamicShipEntity", () => {
         expect(ship.dr).toBeCloseTo(0)
     })
 
-    test("inertia dampening slows linear velocity to zero", () => {
-        const ship = makeShip([], { dampLinear: 0.5 })
-        ship.vel = new Vector2(5, 0) // give it initial velocity
-        ship.setInertiaDamp(true)
-        const world = makeWorld(ship)
+    test("throttle is clamped to [0, 1]", () => {
+        const ship = makeShip([
+            { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 1 }
+        ])
+        ship.setThrottles([5.0]) // over 1
+        expect(ship.throttles[0]).toBe(1)
 
-        stepN(world, 100)
-
-        expect(ship.vel.length()).toBe(0)
-    })
-
-    test("inertia dampening slows angular velocity to zero", () => {
-        const ship = makeShip([], { dampAngular: 0.1 })
-        ship.dr = 1.0 // give it angular velocity
-        ship.setInertiaDamp(true)
-        const world = makeWorld(ship)
-
-        stepN(world, 100)
-
-        expect(ship.dr).toBe(0)
-    })
-
-    test("dampening converges with large dt (no oscillation)", () => {
-        // This is the exact scenario that was bugged: dt >> damping rate
-        const ship = makeShip([], { dampLinear: 0.01, dampAngular: 0.003 })
-        ship.vel = new Vector2(0.4, 0)
-        ship.dr = 0.0087
-        ship.setInertiaDamp(true)
-        const world = makeWorld(ship)
-
-        // Use the actual game dt
-        const dt = 1000 / 128
-        for (let i = 0; i < 2000; i++) world.step(dt)
-
-        expect(ship.vel.length()).toBe(0)
-        expect(ship.dr).toBe(0)
+        ship.setThrottles([-2.0]) // under 0
+        expect(ship.throttles[0]).toBe(0)
     })
 
     test("asymmetric thruster layout causes drift", () => {
-        // Only one thruster, offset from center - should both accelerate AND rotate
         const ship = makeShip([
             { name: "main", offset: new Vector2(2, 0), angle: 0, maxThrust: 1 }
         ], { maxDr: 10 })
-        ship.setThruster("main", true)
+        ship.setThrottles([1.0])
         const world = makeWorld(ship)
 
         stepN(world, 10)
 
-        // Should have both linear velocity and rotation
         expect(ship.vel.length()).toBeGreaterThan(0)
         expect(ship.dr).not.toBeCloseTo(0)
     })
 
-    test("deactivating thruster stops acceleration", () => {
+    test("zero throttle stops acceleration (coasts)", () => {
         const ship = makeShip([
             { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 1 }
         ])
-        ship.setThruster("fwd", true)
+        ship.setThrottles([1.0])
         const world = makeWorld(ship)
 
         stepN(world, 5)
-        ship.setThruster("fwd", false)
+        ship.setThrottles([0])
         const velAfter = ship.vel.clone()
 
         stepN(world, 5)
 
-        // Velocity should stay the same (no dampening, no thrust)
         expect(ship.vel.x).toBeCloseTo(velAfter.x)
         expect(ship.vel.y).toBeCloseTo(velAfter.y)
     })
@@ -785,12 +769,273 @@ describe("DynamicShipEntity", () => {
         const ship = makeShip([
             { name: "fwd", offset: new Vector2(0, 0), angle: 0, maxThrust: 100 }
         ], { maxSpeed: 5 })
-        ship.setThruster("fwd", true)
+        ship.setThrottles([1.0])
         const world = makeWorld(ship)
 
         stepN(world, 100)
 
         expect(ship.vel.length()).toBeCloseTo(5, 1)
+    })
+})
+
+// ============================================================
+// FlightComputer
+// ============================================================
+
+describe("FlightComputer", () => {
+    // Standard symmetric ship layout for testing
+    function makeTestShip(opts = {}) {
+        return new DynamicShipEntity({
+            maxSpeed: 10,
+            maxDr: 1,
+            ...opts,
+            thrusters: [
+                // Main engines
+                { name: "main_fwd", offset: new Vector2(0, 0),  angle: 0,       maxThrust: 1 },
+                { name: "main_rvs", offset: new Vector2(0, 0),  angle: Math.PI, maxThrust: 1 },
+                // RCS (produce torque)
+                { name: "rcs_fr",   offset: new Vector2(1, 0),  angle: 0,       maxThrust: 0.5 },
+                { name: "rcs_fl",   offset: new Vector2(-1, 0), angle: 0,       maxThrust: 0.5 },
+                { name: "rcs_br",   offset: new Vector2(1, 0),  angle: Math.PI, maxThrust: 0.5 },
+                { name: "rcs_bl",   offset: new Vector2(-1, 0), angle: Math.PI, maxThrust: 0.5 },
+            ]
+        })
+    }
+
+    describe("raw mode", () => {
+        test("W key produces forward thrust", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("fwd", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.vel.y).toBeLessThan(0) // moving up
+            expect(Math.abs(ship.vel.x)).toBeLessThan(0.01)
+        })
+
+        test("S key produces reverse thrust", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("back", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.vel.y).toBeGreaterThan(0) // moving down
+        })
+
+        test("A key produces left rotation (negative dr)", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("left", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.dr).toBeLessThan(0)
+        })
+
+        test("D key produces right rotation (positive dr)", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("right", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.dr).toBeGreaterThan(0)
+        })
+
+        test("W+A produces forward movement AND rotation", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("fwd", true)
+            fc.setKey("left", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.vel.length()).toBeGreaterThan(0)
+            expect(ship.dr).toBeLessThan(0)
+        })
+
+        test("no keys = no throttle", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.update()
+
+            for (let i = 0; i < ship.throttles.length; i++) {
+                expect(ship.throttles[i]).toBe(0)
+            }
+        })
+    })
+
+    describe("relative mode", () => {
+        test("W key thrusts forward along ship heading", () => {
+            const ship = makeTestShip({ r: Math.PI / 2 }) // facing right
+            const fc = new FlightComputer(ship)
+            fc.setMode("relative")
+            fc.setKey("fwd", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            // Facing right (PI/2), forward should be +x
+            expect(ship.vel.x).toBeGreaterThan(0)
+        })
+
+        test("cursor angle produces rotation toward target", () => {
+            const ship = makeTestShip({ r: 0 }) // facing up
+            const fc = new FlightComputer(ship)
+            fc.setMode("relative")
+            fc.setCursorAngle(Math.PI / 2) // cursor is to the right
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            // Should rotate clockwise (positive) toward PI/2
+            expect(ship.dr).toBeGreaterThan(0)
+        })
+
+        test("no cursor angle means no rotation", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("relative")
+            fc.setCursorAngle(null)
+            fc.setKey("fwd", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.dr).toBeCloseTo(0)
+        })
+    })
+
+    describe("absolute mode", () => {
+        test("W key moves up regardless of ship rotation", () => {
+            const ship = makeTestShip({ r: Math.PI / 2 }) // facing right
+            const fc = new FlightComputer(ship)
+            fc.setMode("absolute")
+            fc.setKey("fwd", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            // Should move up (-y) even though ship faces right
+            expect(ship.vel.y).toBeLessThan(0)
+        })
+
+        test("D key moves right regardless of ship rotation", () => {
+            const ship = makeTestShip({ r: Math.PI }) // facing down
+            const fc = new FlightComputer(ship)
+            fc.setMode("absolute")
+            fc.setKey("right", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.vel.x).toBeGreaterThan(0)
+        })
+
+        test("W+D: ship with lateral thrusters moves diagonally", () => {
+            // Need lateral thrusters for true absolute diagonal movement
+            const ship = new DynamicShipEntity({
+                maxSpeed: 10, maxDr: 1,
+                thrusters: [
+                    { name: "fwd",   offset: new Vector2(0, 0), angle: 0,              maxThrust: 1 },
+                    { name: "rvs",   offset: new Vector2(0, 0), angle: Math.PI,        maxThrust: 1 },
+                    { name: "right", offset: new Vector2(0, 0), angle: Math.PI / 2,    maxThrust: 1 },
+                    { name: "left",  offset: new Vector2(0, 0), angle: -Math.PI / 2,   maxThrust: 1 },
+                ]
+            })
+            const fc = new FlightComputer(ship)
+            fc.setMode("absolute")
+            fc.setKey("fwd", true)
+            fc.setKey("right", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            expect(ship.vel.x).toBeGreaterThan(0)
+            expect(ship.vel.y).toBeLessThan(0)
+        })
+
+        test("W+D: ship without lateral thrusters still moves (forward component only)", () => {
+            const ship = makeTestShip() // no lateral thrusters
+            const fc = new FlightComputer(ship)
+            fc.setMode("absolute")
+            fc.setKey("fwd", true)
+            fc.setKey("right", true)
+            fc.update()
+
+            const world = makeWorld(ship)
+            stepN(world, 10)
+
+            // Can only thrust along forward axis, so moves up but not right
+            expect(ship.vel.y).toBeLessThan(0)
+        })
+    })
+
+    describe("solver properties", () => {
+        test("solver uses RCS thrusters for rotation", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("right", true)
+            fc.update()
+
+            // At least one RCS thruster should have non-zero throttle
+            const rcsThrottles = [ship.throttles[2], ship.throttles[3], ship.throttles[4], ship.throttles[5]]
+            expect(rcsThrottles.some(t => t > 0)).toBe(true)
+        })
+
+        test("forward intent fires main engine + contributing RCS", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("fwd", true)
+            fc.update()
+
+            // Main forward thruster (index 0) should be on
+            expect(ship.throttles[0]).toBeGreaterThan(0)
+            // Main reverse (index 1) should be off
+            expect(ship.throttles[1]).toBe(0)
+        })
+
+        test("combined intent shares thrusters between linear and rotation", () => {
+            const ship = makeTestShip()
+            const fc = new FlightComputer(ship)
+            fc.setMode("raw")
+            fc.setKey("fwd", true)
+            fc.setKey("right", true)
+            fc.update()
+
+            // Should have both forward thrust and rotation
+            // Main forward engine should fire
+            expect(ship.throttles[0]).toBeGreaterThan(0)
+            // Some RCS should be active for torque
+            const anyRcsActive = [2, 3, 4, 5].some(i => ship.throttles[i] > 0)
+            expect(anyRcsActive).toBe(true)
+        })
     })
 })
 

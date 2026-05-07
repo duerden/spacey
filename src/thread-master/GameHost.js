@@ -96,6 +96,7 @@ class GameHost {
 
     setupStateWorker(){
         this.state = {}
+        this.mouseIObuffer = new Uint16Array(6) //abs x, abs y, dx, dy, rel from center x, rel from center y
 
         // reactive state signal -- updated from worker, read by JSX
         const [getUiState, setUiState] = createSignal(this.state)
@@ -104,6 +105,7 @@ class GameHost {
 
         // server handles ticking and sim and general state off threaed
         this.server = new ChannelWorkerHost("./src/thread-server/Server.js")
+
         this.server.addEventListener("channel_ui_state", (event) => {
             this.state = event.data
             this._setUiState(event.data) //update UI
@@ -113,6 +115,8 @@ class GameHost {
             console.error("server error!")
             throw error
         })
+
+        this.server.postMessage("heres_your_mouseIObuffer", this.mouseIObuffer)
         this.workers.set("thread-server", this.server)
     }
 
@@ -170,6 +174,17 @@ class GameHost {
                 }
             }
         }
+
+        var {x, y} = r.GetMousePosition()
+        var {x: dx, y: dy} = r.GetMouseDelta()
+        var {rx, ry} = {rx: x - Math.floor(this.width/2), ry: y - Math.floor(this.height/2)}
+
+        this.mouseIObuffer[0] = x
+        this.mouseIObuffer[1] = y
+        this.mouseIObuffer[2] = dx
+        this.mouseIObuffer[3] = dy
+        this.mouseIObuffer[4] = rx
+        this.mouseIObuffer[5] = ry
 
         return this.keybinds
     }
